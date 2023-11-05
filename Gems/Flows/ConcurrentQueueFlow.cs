@@ -1,5 +1,6 @@
 ﻿using Gems.Utilities;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 
 namespace Gems.Flows
 {
@@ -12,14 +13,30 @@ namespace Gems.Flows
     {
         private readonly ConcurrentQueue<string> _queue = new();
         private bool _readFromDbCompleted = false;
-        private int _dbCount = 1;
-        private int _processCount = 1;
+        private int _dbCount = 0;
+        private int _processCount = 0;
+        private readonly SemaphoreSlim _countLock = new(1, 1);
+
+        private async Task UpdateDbCount()
+        {
+            await _countLock.WaitAsync();
+            _dbCount++;
+            _countLock.Release();
+        }
+
+        private async Task UpdateProcessCount()
+        {
+            await _countLock.WaitAsync();
+            _processCount++;
+            _countLock.Release();
+        }
 
         private async Task<string> QueryDbItem()
         {
             await Task.Delay(100);
+            await UpdateDbCount();
 
-            var result = _dbCount++ + " : " + new Random().Next(0, 1000000).ToString();
+            var result = _dbCount + " : " + new Random().Next(0, 1000000).ToString();
 
             return result;
         }
@@ -43,7 +60,7 @@ namespace Gems.Flows
                     Diagnostics.PrintProcessThreadCount();
                     Diagnostics.PrintThreadPoolCount();
                     Console.WriteLine("---");
-                    _processCount++;
+                    await UpdateProcessCount();
                 }
                 else
                 {
@@ -64,9 +81,11 @@ namespace Gems.Flows
 
         public async Task Invoke()
         {
+            var sw = new Stopwatch();
+            sw.Start();
             SpinUpProcessQueue(threads: 4);
 
-            for (int i = 0; i < 100; i++)
+            for (int i = 0; i < 20; i++)
             {
                 var item = await QueryDbItem();
                 _queue.Enqueue(item);
@@ -81,6 +100,10 @@ namespace Gems.Flows
             Console.ForegroundColor = ConsoleColor.Green;
             Console.WriteLine("\n Done processing queue \n");
             Console.ForegroundColor = ConsoleColor.Gray;
+
+            sw.Stop();
+            var elapsed = sw.Elapsed.Seconds;
+            Console.WriteLine($"Seconds to complete: {elapsed}");
         }
     }
 }
