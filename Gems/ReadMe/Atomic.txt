@@ -1,0 +1,11 @@
+Interlocked.Increment(ref _processCount); is an atomic operation.
+
+In the context of concurrent programming and multi-threading, the term "atomic" refers to an operation that is indivisible, meaning it happens as a single, uninterruptible unit of execution. In the context of Interlocked.Increment and other atomic operations, "atomic" ensures that the operation is executed in its entirety without being interrupted by other threads.
+
+In simpler terms, consider a scenario where two or more threads are trying to update a shared variable concurrently. An operation is atomic if, once started, it is guaranteed to complete fully before any other operation can start. It's like an indivisible transaction that either happens entirely or not at all.
+
+For example, let's say you have a shared variable count initialized to 0, and multiple threads try to increment it simultaneously. If the increment operation is not atomic, it could result in unexpected behavior. Two threads might read the current value of count (let's say both read 0), both increment it to 1, and then store it back, resulting in a final value of 1 instead of 2.
+
+However, if the increment operation is atomic, it ensures that only one thread can perform the increment operation at a time. The operation completes without being interrupted, guaranteeing that each increment operation happens one after the other, maintaining the integrity of the variable's value across all threads.
+
+Atomic operations are crucial in multi-threaded programming to prevent race conditions and ensure the consistency and correctness of shared data when accessed by multiple threads simultaneously. Using atomic operations like Interlocked.Increment helps developers write thread-safe code in concurrent environments.

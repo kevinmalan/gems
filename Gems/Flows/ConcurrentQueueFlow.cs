@@ -15,26 +15,11 @@ namespace Gems.Flows
         private bool _readFromDbCompleted = false;
         private int _dbCount = 0;
         private int _processCount = 0;
-        private readonly SemaphoreSlim _countLock = new(1, 1);
-
-        private async Task UpdateDbCount()
-        {
-            await _countLock.WaitAsync();
-            _dbCount++;
-            _countLock.Release();
-        }
-
-        private async Task UpdateProcessCount()
-        {
-            await _countLock.WaitAsync();
-            _processCount++;
-            _countLock.Release();
-        }
 
         private async Task<string> QueryDbItem()
         {
             await Task.Delay(100);
-            await UpdateDbCount();
+            Interlocked.Increment(ref _dbCount);
 
             var result = _dbCount + " : " + new Random().Next(0, 1000000).ToString();
 
@@ -60,7 +45,7 @@ namespace Gems.Flows
                     Diagnostics.PrintProcessThreadCount();
                     Diagnostics.PrintThreadPoolCount();
                     Console.WriteLine("---");
-                    await UpdateProcessCount();
+                    Interlocked.Increment(ref _processCount);
                 }
                 else
                 {
@@ -70,12 +55,14 @@ namespace Gems.Flows
             }
         }
 
-        private void CheckIfProcessCompleted()
+        private async Task CheckIfProcessCompleted()
         {
             while (true)
             {
                 if (_dbCount == _processCount)
                     break;
+
+                await Task.Delay(1000);
             }
         }
 
@@ -96,7 +83,7 @@ namespace Gems.Flows
             Console.WriteLine("\n Done reading from Db \n");
             Console.ForegroundColor = ConsoleColor.Gray;
 
-            CheckIfProcessCompleted();
+            await CheckIfProcessCompleted();
             Console.ForegroundColor = ConsoleColor.Green;
             Console.WriteLine("\n Done processing queue \n");
             Console.ForegroundColor = ConsoleColor.Gray;
